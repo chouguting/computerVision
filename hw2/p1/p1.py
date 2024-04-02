@@ -49,7 +49,7 @@ def main():
         # vocab and features is saved to disk to avoid recomputing the vocabulary every time
         if os.path.isfile('vocab.pkl') is False:
             print('No existing visual word vocabulary found. Computing one from training images')
-            vocab_size = 400   # vocab_size is up to you, larger values will work better (to a point) but be slower to compute
+            vocab_size = 150   # vocab_size is up to you, larger values will work better (to a point) but be slower to compute
             vocab = build_vocabulary(train_img_paths, vocab_size)
             with open('vocab.pkl', 'wb') as f:
                 pickle.dump(vocab, f, protocol=pickle.HIGHEST_PROTOCOL)
