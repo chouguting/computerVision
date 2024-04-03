@@ -111,7 +111,7 @@ def build_vocabulary(img_paths, vocab_size=150):
     for img_path in tqdm(img_paths):
         img = Image.open(img_path)  # 開啟圖片檔
         img = np.asarray(img).astype(np.float32)   # 轉換成np.array
-        descriptors = dsift(img, step=[3, 3], fast=True)[1]  # 取得SIFT特徵
+        descriptors = dsift(img, step=[2, 2], fast=True)[1]  # 取得SIFT特徵
         # random_indices = np.random.choice(descriptors.shape[0], size=1500,
         #                                   replace=False)  # 隨機取500個特徵(replace=False代表不重複取樣)
         # descriptors = descriptors[random_indices]  # 取得500個特徵
@@ -173,14 +173,14 @@ def get_bags_of_sifts(img_paths, vocab):
     for img_path in tqdm(img_paths):
         img = Image.open(img_path)  # 開啟圖片檔
         img = np.array(img).astype(np.float32)  # 轉換成np.array
-        descriptors = dsift(img, step=[3, 3], fast=True)[1]  # 取得SIFT特徵
+        descriptors = dsift(img, step=[2, 2], fast=True)[1]  # 取得SIFT特徵
         ## 計算特徵與中心的距離
         # vocab是k個中心點，每個中心點有128維，因此vocab的shape是(k, 128)
         # descriptors是m個特徵，每個特徵有128維，因此descriptors的shape是(m, 128)，
         # (實際上每張圖片的特徵數量不一定相同，但這裡為了方便說明，假設每張圖片的特徵數量都是m)
         # cdist會計算出 m個128維特徵與k個128維中心的距離，因此distances的shape是(m, k)
         # 例如，distances[2, 5]代表第2個特徵與第5個中心的距離
-        distances = cdist(descriptors, vocab, metric='cityblock')
+        distances = cdist(descriptors, vocab)
         # 取得每個特徵最近的中心，會得到m個中心的index，因此nearest_centers的shape是(m,)
         nearest_centers = np.argmin(distances, axis=1)
         # 計算每個中心的出現次數，hist是一個長度為k的array，代表每個中心的出現次數
@@ -254,7 +254,7 @@ def nearest_neighbor_classify(train_img_feats, train_labels, test_img_feats):
         # [test_img_feature]是一個 1 x d 的array，train_img_feats是一個 N x d 的array
         # cdist會計算出 1個d維特徵與N個d維特徵的距離，因此distances的shape是(1, N)，再用squeeze將shape轉換成(N,)
         # distances[ 3]代表第3個這張testing image與第3個training image的距離
-        distances = cdist(np.asarray([test_img_feature]), train_img_feats, metric='cityblock').squeeze()  # 計算距離
+        distances = cdist(np.asarray([test_img_feature]), train_img_feats, metric='minkowski', p=0.25).squeeze()  # 計算距離
         nearest_indices = np.argsort(distances)[:k]  # 利用argsort找出距離最小的k個index
         nearest_labels = [train_labels[i] for i in nearest_indices]  # 取得k個最近的label
         votingResult = np.zeros(len(CAT))  # 建立一個長度為15的array，用來記錄每個label出現的次數
