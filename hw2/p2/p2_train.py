@@ -33,8 +33,24 @@ def plot_learning_curve(logfile_dir, result_lists):
     # plot being unsaved if early stop, so the result_lists's size #
     # is not fixed.                                                #
     ################################################################
-    
-    pass
+    plt.figure()
+    plt.plot(result_lists['train_acc'], label='train_acc')
+    plt.plot(result_lists['val_acc'], label='val_acc')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy')
+    plt.legend()
+    plt.savefig(os.path.join(logfile_dir, 'learning_curve_acc.png'))
+    plt.close()
+
+    plt.figure()
+    plt.plot(result_lists['train_loss'], label='train_loss')
+    plt.plot(result_lists['val_loss'], label='val_loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.savefig(os.path.join(logfile_dir, 'learning_curve_loss.png'))
+    plt.close()
+    # pass
 
 def train(model, train_loader, val_loader, logfile_dir, model_save_dir, criterion, optimizer, scheduler, device):
 
@@ -75,7 +91,7 @@ def train(model, train_loader, val_loader, logfile_dir, model_save_dir, criterio
 
         ##### VALIDATION #####
         model.eval()
-        with torch.no_grad():
+        with torch.no_grad(): #防止梯度更新，因為這邊只是要驗證
             val_start_time = time.time()
             val_loss = 0.0
             val_correct = 0.0
@@ -88,6 +104,16 @@ def train(model, train_loader, val_loader, logfile_dir, model_save_dir, criterio
             # You don't have to update parameters, just record the      #
             # accuracy and loss.                                        #
             #############################################################
+            for batch, data in enumerate(val_loader):
+                sys.stdout.write(f'\r[{epoch + 1}/{cfg.epochs}] Val batch: {batch + 1} / {len(val_loader)}')
+                sys.stdout.flush()
+                # 載入資料
+                images, labels = data['images'].to(device), data['labels'].to(device)
+                pred = model(images) #利用model預測
+                loss = criterion(pred, labels) #計算loss
+                val_correct += torch.sum(torch.argmax(pred, dim=1) == labels) #計算有多少筆正確
+                val_loss += loss.item()  #加到val_loss
+
             
             ######################### TODO End ##########################
 

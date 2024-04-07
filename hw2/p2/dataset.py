@@ -16,7 +16,12 @@ def get_dataloader(dataset_dir, batch_size=1, split='test'):
         transform = transforms.Compose([
             transforms.Resize((32,32)),
             ##### TODO: Data Augmentation Begin #####
-           
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomRotation(15),
+            transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
+            transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1),
+            transforms.RandomResizedCrop(32, scale=(0.8, 1.0), ratio=(0.75, 1.3333333333333333)),
+            transforms.RandomPerspective(distortion_scale=0.1, p=0.5),
             ##### TODO: Data Augmentation End #####
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
@@ -71,7 +76,19 @@ class CIFAR10Dataset(Dataset):
         # You will not have labels if it's test set            #
         ########################################################
 
-        pass
+        image = Image.open(os.path.join(self.dataset_dir, self.image_names[index]))
+        image = self.transform(image)
+        if self.split != 'test':
+            label = self.labels[index]
+            labelTensor = torch.tensor(label, dtype=torch.long)
+            return {
+                'images': image,
+                'labels': labelTensor
+            }
+        else:
+            return {
+                'images': image
+            }
 
         # return {
         #     'images': image, 
