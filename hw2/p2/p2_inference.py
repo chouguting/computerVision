@@ -4,6 +4,7 @@ import time
 import argparse
 
 import torch
+from tqdm import tqdm
 
 from model import MyNet, ResNet18
 from dataset import get_dataloader
@@ -57,11 +58,23 @@ def main():
         # You don't have to calculate accuracy and loss since you   #
         # don't have labels.                                        #
         #############################################################
-        for i, (images, _) in enumerate(test_loader):
-            images = images.to(device)
+        index = 0
+        for data in tqdm(test_loader):
+            images = data['images'].to(device)
             outputs = model(images)
-            _, predicted = torch.max(outputs, 1)
-            predictions.append(predicted.item())
+            probabilities = torch.nn.functional.softmax(outputs, dim=1)
+            predicted = torch.argmax(outputs, 1)
+            max, argmax = torch.max(outputs, 1)
+            if predicted != argmax:
+                print("error")
+
+            predictions.extend(predicted.cpu().numpy())
+            # if(probabilities[0][predicted] < 0.5):
+            #     # print(probabilities[0][predicted])
+            #     # print("error i = ", index)
+            index += 1
+
+
 
         ######################### TODO End ##########################
 

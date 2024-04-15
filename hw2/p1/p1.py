@@ -26,7 +26,7 @@ assert NUM_PER_CAT <= 100
 def main():
     
     parser = argparse.ArgumentParser()
-    parser.add_argument('--feature', help='feature', type=str, default='bag_of_sift')
+    parser.add_argument('--feature', help='feature', type=str, default='tiny_image')
     parser.add_argument('--classifier', help='classifier', type=str, default='nearest_neighbor')
     parser.add_argument('--dataset_dir', help='dataset directory', type=str, default='../hw2_data/p1_data/')
     args = parser.parse_args()

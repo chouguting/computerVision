@@ -39,7 +39,7 @@ def plot_learning_curve(logfile_dir, result_lists):
     plt.xlabel('Epoch')
     plt.ylabel('Accuracy')
     plt.legend()
-    plt.savefig(os.path.join(logfile_dir, 'learning_curve_acc.png'))
+    plt.savefig(os.path.join(logfile_dir, 'learning_curve_acc_mix.png'))
     plt.close()
 
     plt.figure()
@@ -48,8 +48,45 @@ def plot_learning_curve(logfile_dir, result_lists):
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
     plt.legend()
-    plt.savefig(os.path.join(logfile_dir, 'learning_curve_loss.png'))
+    plt.savefig(os.path.join(logfile_dir, 'learning_curve_loss_mix.png'))
     plt.close()
+
+    #單獨畫 train_acc
+    plt.figure()
+    plt.plot(result_lists['train_acc'], label='train_acc')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy')
+    plt.legend()
+    plt.savefig(os.path.join(logfile_dir, 'learning_curve_acc_train.png'))
+    plt.close()
+
+    #單獨畫 train_loss
+    plt.figure()
+    plt.plot(result_lists['train_loss'], label='train_loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.savefig(os.path.join(logfile_dir, 'learning_curve_loss_train.png'))
+    plt.close()
+
+    #單獨畫 val_acc
+    plt.figure()
+    plt.plot(result_lists['val_acc'], label='val_acc')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy')
+    plt.legend()
+    plt.savefig(os.path.join(logfile_dir, 'learning_curve_acc_val.png'))
+    plt.close()
+
+    #單獨畫 val_loss
+    plt.figure()
+    plt.plot(result_lists['val_loss'], label='val_loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.savefig(os.path.join(logfile_dir, 'learning_curve_loss_val.png'))
+    plt.close()
+
     # pass
 
 def train(model, train_loader, val_loader, logfile_dir, model_save_dir, criterion, optimizer, scheduler, device):

@@ -48,7 +48,8 @@ def get_tiny_images(img_paths):
         img = img.resize((16, 16))  # 調整圖片大小
         img = np.array(img).astype(np.float32) # 轉換成np.array
         img = img.flatten()  # 壓縮成一維
-        img = img / np.sum(img)  # 正規化
+        #img = img / np.sum(img)  # 正規化
+        img = (img - np.mean(img)) / np.std(img)  # 正規化(減去平均值後除以標準差)
         tiny_img_feats.append(img)  # 加入list
 
     #################################################################
