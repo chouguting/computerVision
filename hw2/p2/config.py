@@ -8,7 +8,7 @@
 exp_name   = 'semi_adam_pre_da' # name of experiment
 
 # Model Options
-model_type = 'resnet18' # 'mynet' or 'resnet18'
+model_type = 'mynet' # 'mynet' or 'resnet18'
 
 # Learning Options
 epochs     = 150           # train how many epochs

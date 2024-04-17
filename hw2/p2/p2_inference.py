@@ -14,7 +14,7 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--test_datadir', help='test dataset directory', type=str, default='../hw2_data/p2_data/val/')
-    parser.add_argument('--model_type', help='mynet or resnet18', type=str, default='resnet18')
+    parser.add_argument('--model_type', help='mynet or resnet18', type=str, default='mynet')
     parser.add_argument('--output_path', help='output csv file path', type=str, default='./output/pred.csv')
     args = parser.parse_args()
 

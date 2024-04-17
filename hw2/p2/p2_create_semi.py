@@ -79,7 +79,7 @@ def main():
             max, argmax = torch.max(outputs, 1)
             probabilitiesMax, probabilitiesArgmax = torch.max(probabilities, 1)
 
-            if(probabilitiesMax>0.97):
+            if(probabilitiesMax>0.98):
                 #add to json
                 jsonResult['filenames'].append(test_loader.dataset.image_names[index])
                 jsonResult['labels'].append(argmax.cpu().numpy().item())

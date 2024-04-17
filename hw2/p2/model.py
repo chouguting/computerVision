@@ -19,6 +19,8 @@ class MyNet(nn.Module):
         self.maxPool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
         self.batchNorm = nn.BatchNorm2d(1024)
         self.flatten = nn.Flatten()
+        self.dropout1 = nn.Dropout(0.5)
+        self.dropout2 = nn.Dropout(0.5)
         self.fc0 = nn.Linear(4096, 1024)
         self.fc1 = nn.Linear(1024, 128)
         self.fc2 = nn.Linear(128, 10)
@@ -45,10 +47,10 @@ class MyNet(nn.Module):
 
         x = self.batchNorm(x)
         x = self.flatten(x) #輸出為(4096)
-        x = nn.Dropout(0.5)(x)
+        x = self.dropout1(x)
         x = self.fc0(x)
         x = self.relu(x)
-        x = nn.Dropout(0.5)(x)
+        x = self.dropout2(x)
         x = self.fc1(x)
         x = self.relu(x)
         x = self.fc2(x)
@@ -67,7 +69,9 @@ class ResNet18(nn.Module):
         # (batch_size, 3, 32, 32)
         self.resnet = models.resnet18(pretrained=True)
         # (batch_size, 512)
-        self.resnet.fc = nn.Linear(self.resnet.fc.in_features, 256)
+        self.resnet.fc = nn.Linear(self.resnet.fc.in_features, 10)
+        self.dropout = nn.Dropout(0.5)
+        self.adaptive_pool = nn.AdaptiveAvgPool2d(output_size=(1, 1))
         # (batch_size, 10)
 
         #######################################################################
@@ -82,8 +86,8 @@ class ResNet18(nn.Module):
         self.resnet.maxpool = Identity()
         # add dropout
         self.resnet.avgpool = nn.Sequential(
-            nn.AdaptiveAvgPool2d(output_size=(1, 1)),
-            nn.Dropout(0.5)
+            self.adaptive_pool,
+            self.dropout
         )
 
     def forward(self, x):
@@ -97,5 +101,5 @@ class Identity(nn.Module):
         return x
     
 if __name__ == '__main__':
-    model = ResNet18()
+    model = MyNet()
     print(model)
