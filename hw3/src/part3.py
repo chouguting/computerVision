@@ -16,7 +16,7 @@ if __name__ == '__main__':
     # TODO: call solve_homography() & warping
     target_corners = np.array([[0, 0], [w, 0], [w, h], [0, h]])
 
-    dst = np.zeros((h, w, c))
+    dst = np.zeros((h, w, c)) # destination image, 希望把secret1貼到這張圖片上
     output3_1 = None
     H = solve_homography(corners1, target_corners)
     output3_1 = warping(secret1, dst, H, 0, h, 0, w, direction='b')
