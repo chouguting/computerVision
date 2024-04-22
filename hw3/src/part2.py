@@ -29,12 +29,28 @@ def planarAR(REF_IMAGE_PATH, VIDEO_PATH):
         if ret:  ## check whethere the frame is legal, i.e., there still exists a frame
             # TODO: 1.find corners with aruco
             # function call to aruco.detectMarkers()
+            #corners是aruco marker的座標(可能有多個)
+            corners, arucoMarkerIds, rejected = aruco.detectMarkers(frame, arucoDict, parameters=arucoParameters)
+            if len(corners) < 1:
+                videowriter.write(frame)
+                pbar.update(1)
+                continue
+            #本次作業中，只有一個aruco marker
+            cornersOnImage = corners[0][0].astype(int)
 
             # TODO: 2.find homograpy
             # function call to solve_homography()
+            #ref_corns是已知的座標(在還沒有任何變形之前)
+            #corner是aruco marker的座標 (在變形之後，也就是拍到的情況下)
+            #因為我們想要把一張圖片貼到ArUco marker上，所以我們要找的是從ref_corns到cornersOnImage的homography
+            H = solve_homography(ref_corns, cornersOnImage)
 
             # TODO: 3.apply backward warp
             # function call to warping()
+            #因為是backward warp，所以xMin, yMin, xMax, yMax是用destination的座標來決定(也就是cornersOnImage)
+            xMin, yMin = np.min(cornersOnImage, axis=0)
+            xMax, yMax = np.max(cornersOnImage, axis=0)
+            frame = warping(ref_image, frame, H, yMin, yMax, xMin, xMax, direction='b')
 
             videowriter.write(frame)
             pbar.update(1)
@@ -46,6 +62,7 @@ def planarAR(REF_IMAGE_PATH, VIDEO_PATH):
     video.release()
     videowriter.release()
     cv2.destroyAllWindows()
+
 
 
 if __name__ == "__main__":
