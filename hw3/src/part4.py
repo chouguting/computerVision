@@ -21,10 +21,10 @@ def panorama(imgs):
     last_best_H = np.eye(3)
     out = None
 
-    N = 100 #RANSAC的次數
-    K = 13 #隨機取出的座標數
-    MATCH_COUNT = 100 #取前100個最佳的matches
-    INLIER_THRESHOLD = 0.3 #inlier的threshold
+    N = 10000 #RANSAC的次數
+    K = 10 #隨機取出的座標數
+    MATCH_COUNT = 50 #取前MATCH_COUNT個最佳的matches
+    INLIER_THRESHOLD = 0.18 #inlier的threshold
 
     # for all images to be stitched:
     for idx in tqdm(range(len(imgs)-1)):
@@ -32,19 +32,19 @@ def panorama(imgs):
         im2 = imgs[idx + 1]
 
         # TODO: 1.feature detection & matching
-        # 用SIFT找特徵點
-        sift = cv2.SIFT_create()
-        #利用sift抓出keypoints和descriptors
+        # 用ORB找特徵點
+        orb = cv2.ORB_create()
+        #利用ORB抓出keypoints和descriptors
         #im1是trainImage(原圖), im2是queryImage(要準備接上去的圖)
-        keyPoints1, descriptors1 = sift.detectAndCompute(im1, None)
-        keyPoints2, descriptors2 = sift.detectAndCompute(im2, None)
+        keyPoints1, descriptors1 = orb.detectAndCompute(im1, None)
+        keyPoints2, descriptors2 = orb.detectAndCompute(im2, None)
         #用BFMatcher找出最佳的matches
-        bfMatcher = cv2.BFMatcher(cv2.NORM_L2 , crossCheck=True)
+        bfMatcher = cv2.BFMatcher(cv2.NORM_HAMMING , crossCheck=True)
         #這邊query是im1, train是im2
         matches = bfMatcher.match(descriptors2, descriptors1)
         #找出最佳的matches,距離小的排前面
         matches = sorted(matches, key=lambda x: x.distance)
-        bestMatches = matches[:MATCH_COUNT] #取前100個最佳的matches
+        bestMatches = matches[:MATCH_COUNT] #取前MATCH_COUNT個最佳的matches
         #取出keypoints的index，並用來找出對應的座標
         sourceKeyPoints = np.array([keyPoints2[match.queryIdx].pt for match in bestMatches])
         destinationKeyPoints = np.array([keyPoints1[match.trainIdx].pt for match in bestMatches])
