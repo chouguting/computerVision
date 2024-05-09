@@ -21,9 +21,9 @@ def panorama(imgs):
     last_best_H = np.eye(3)
     out = None
 
-    N = 3000 #RANSAC的次數
+    N = 30000 #RANSAC的次數
     K = 11 #隨機取出的座標數
-    MATCH_COUNT = 50 #取前MATCH_COUNT個最佳的matches
+    MATCH_COUNT = 100 #取前MATCH_COUNT個最佳的matches
     INLIER_THRESHOLD = 0.21 #inlier的threshold
 
     # for all images to be stitched:
