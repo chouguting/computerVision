@@ -129,33 +129,35 @@ def computeDisp(Il, Ir, max_disp):
     rightCostVolume = np.zeros((h, w, max_disp + 1), dtype=np.float32)  #從左圖轉到右圖的disparity cost
     sigma_r, sigma_s, WMF_r = 4, 11, 11
     wndw_size = -1  # calculate window size from spatial kernel
-    for d in range(max_disp + 1):
+    for d in range(max_disp + 1):  #嘗試每一種disparity
 
-        #另一種方式 用roll的方式來計算cost
-        # 對於左圖，要往右移d，右移的意思是說相較於右圖中的基準點的座標值，左圖的座標值要往右移d
-        # 要達到這個效果，實際上需要將左圖整個左移d，這樣把移動完的左圖和右圖放在一起時，左圖的座標值正好都是右圖的座標值加上d
-        # 例如: 如果右圖的基準點是(5, 5)，d=2，那本來在左圖中我們應該要看的點是(5, 7)，也就是右圖的基準點加上d
-        #      但是因為左圖整個左了移d=2，所以如果右圖的基準點是(5, 5)，我們只需要看左圖的(5, 5)就可以了
+        # 計算從左圖轉到右圖的disparity cost
+        # 先將左圖往左移d個pixel，這樣移動完的左圖和右圖對應在一起時，左圖的(i, j)和右圖的(i, j-d)是對應的
         leftImageBinaryPatternShiftD = np.roll(leftImageBinaryPattern, -d, axis=1)
         #計算hamming distance
-        leftCost = np.sum(leftImageBinaryPatternShiftD.astype(np.uint32) ^ rightImageBinaryPattern.astype(np.uint32), axis=3)
+        leftCost = np.sum(
+            leftImageBinaryPatternShiftD.astype(np.uint32) ^ rightImageBinaryPattern.astype(np.uint32), axis=3)
         leftCost = np.sum(leftCost, axis=2).astype(np.float32)  # 把所有channel的cost加起來
         # 先把多出來的部分去掉，再補0回去
         # 切掉的原因是因為左圖已經向左移動d，所以左圖的右邊會有d個pixel的cost是沒意義的 (因此會在右邊切掉d個pixel)
         # 補0的原因是剛剛把左圖向左移動d，所以要將左圖移回來，這樣座標才會是對的 (因此會在左邊補d個pixel)
         leftCost = leftCost[:, :w - d]
         leftCost = np.pad(leftCost, ((0, 0), (d, 0)), 'constant')  #因為在右圖中，我們需要向左邊移動d，所以要在左邊加上d個pixel
-        #右圖同理， 要將右圖整個向右移動d，這樣把移動完的右圖和左圖放在一起時，相同的左圖座標對應的就會是舊的右圖座標左移d
+        #右圖同理，我們先將右圖整個向右移動d，這樣移動完的右圖和左圖對應在一起時，右圖的(i, j)和左圖的(i, j+d)是對應的
         rightImageBinaryPatternShiftD = np.roll(rightImageBinaryPattern, d, axis=1)
-        rightCost = np.sum(rightImageBinaryPatternShiftD.astype(np.uint32) ^ leftImageBinaryPattern.astype(np.uint32), axis=3)
+        rightCost = np.sum(
+            rightImageBinaryPatternShiftD.astype(np.uint32) ^ leftImageBinaryPattern.astype(np.uint32), axis=3)
         rightCost = np.sum(rightCost, axis=2).astype(np.float32)  # 把所有channel的cost加起來
-        rightCost = rightCost[:, d:] #因為將右圖整個向右移動d，所以右圖的左邊會有d個pixel的cost是沒意義的 (因此會在左邊切掉d個pixel)
-        rightCost = np.pad(rightCost, ((0, 0), (0, d)), 'constant')  #因為將右圖整個向右移動d，又把左邊切掉d個pixel，所以要在右邊加上d個pixel，讓大小和原圖一樣
+        rightCost = rightCost[:, d:]  #因為將右圖整個向右移動d，所以右圖的左邊會有d個pixel的cost是沒意義的 (因此會在左邊切掉d個pixel)
+        rightCost = np.pad(rightCost, ((0, 0), (0, d)),
+                                 'constant')  #因為將右圖整個向右移動d，又把左邊切掉d個pixel，所以要在右邊加上d個pixel，讓大小和原圖一樣
 
-        # 從左圖到右圖的cost
-        rightCostVolume[:,:,d] = xip.jointBilateralFilter(Il, leftCost, -1, sigma_r, sigma_s)
-        # 從右圖到左圖的cost
-        leftCostVolume[:,:,d] = xip.jointBilateralFilter(Ir, rightCost, -1, sigma_r, sigma_s)
+        # rightCostVolume[i,j,d]代表的是右圖中(i, j)的pixel相對於左圖中(i, j+d)的pixel的disparity cost
+        # 利用joint bilateral filter讓cost volume變得更smooth
+        # 這邊的joint image是左圖，因為我們要讓右圖的cost volume變得更smooth，
+        leftCostVolume[:, :, d] = xip.jointBilateralFilter(Il, leftCost, -1, sigma_r, sigma_s)
+        # leftCostVolume[i,j,d]代表的是左圖中(i, j)的pixel相對於右圖中(i, j-d)的pixel的disparity cost
+        rightCostVolume[:, :, d] = xip.jointBilateralFilter(Ir, rightCost, -1, sigma_r, sigma_s)
 
     # >>> Disparity Optimization
     # TODO: Determine disparity based on estimated cost.
@@ -166,13 +168,62 @@ def computeDisp(Il, Ir, max_disp):
     #     for j in range(1, w + 1):
     #         labels[i - 1, j - 1] = np.argmin(rightCostVolume[i - 1, j - 1])
     #更快的方法是直接用np.argmin，這樣就不用用for loop
-    labels = np.argmin(rightCostVolume, axis=2)
+
+    # leftDisparityMap(i, j)代表的是左圖中(i, j)的pixel相對於右圖的disparity
+    # 換句話說，如果左圖中(i, j)的pixel的disparity是d，那右圖中對應的pixel就是(i, j-d) (因為在右圖中，物體相對於左圖中的同物體會往左移d)
+    # 因為rightCostVolume存的是左圖轉到右圖的disparity cost，所以要找最小值
+    leftDisparityMap = np.argmin(leftCostVolume, axis=2)
+    # rightDisparityMap(i, j)代表的是右圖中(i, j)的pixel相對於左圖的disparity
+    # 換句話說，如果右圖中(i, j)的pixel的disparity是d，那左圖中對應的pixel就是(i, j+d) (因為在左圖中，物體相對於右圖中的同物體會往右移d)
+    rightDisparityMap = np.argmin(rightCostVolume, axis=2)  #leftLabel[i, j]代表的是左圖中(i, j)的pixel相對於右圖的disparity
+    labels = leftDisparityMap
+
 
     # >>> Disparity Refinement
     # TODO: Do whatever to enhance the disparity map
     # [Tips] Left-right consistency check -> Hole filling -> Weighted median filtering
 
+    #左右一致性檢查
+    #對於每一個pixel，檢查左圖的disparity和右圖的disparity是否一致
+    #如果不一致，就將這個pixel的disparity設為0
+    #因為這樣的pixel是不可靠的
+    #檢查 D_L(x,y) == D_R(x - D_L(x,y), y) 有沒有成立
+    holeMap = np.zeros((h, w), dtype=np.uint8)
+    for i in range(h):  #高
+        for j in range(w):  #寬
+            #i,j是左圖中的pixel，leftDisparityMap[i, j]是左圖中的pixel相對於右圖的disparity，對應到右圖中的pixel是(i, j - leftDisparityMap[i, j])
+            if j - leftDisparityMap[i, j] < 0 or j - leftDisparityMap[i, j] >= w:  #如果超出右圖的範圍，就不用檢查了
+                holeMap[i, j] = 1
+            #檢查右圖中 (i, j - leftDisparityMap[i, j]) pixel的disparity是否和左圖中(i, j)的disparity一樣
+            elif rightDisparityMap[i, j - leftDisparityMap[i, j]] != leftDisparityMap[i, j]:  #如果左右兩邊的disparity不一樣，就設為0
+                holeMap[i, j] = 1
+
+    #補洞
+    #對於每一個pixel，如果這個pixel是洞，就用這個pixel周圍的值來補 (左右尋找最近的非洞的pixel，會得到左右各一個，再取小的)
+    #這樣就可以補洞
+    #因為邊界可能會找不到鄰居(像是最左側的左邊沒鄰居)，所以我們先做padding
+    #用最大值來padding是因為我們之後要找左右兩個有值鄰居中最小的，所以如果先放最大值，就不會被選到
+    labelTemp = np.pad(labels, ((1, 1), (1, 1)), 'constant', constant_values=max_disp + 1)
+    holeMap = np.pad(holeMap, ((1, 1), (1, 1)), 'constant', constant_values=0)
+    for i in range(1, h + 1):
+        for j in range(1, w + 1):
+            if holeMap[i, j] == 1: #代表是洞
+                #找左邊最近的非洞的pixel
+                leftFinder = j - 1
+                while leftFinder >= 0 and holeMap[i, leftFinder] == 1:
+                    leftFinder -= 1
+                leftClosest = labelTemp[i, leftFinder]
+                #找右邊最近的非洞的pixel
+                rightFinder = j + 1
+                while rightFinder < w + 2 and holeMap[i, rightFinder] == 1:
+                    rightFinder += 1
+                rightClosest = labelTemp[i, rightFinder]
+                labelTemp[i, j] = min(leftClosest, rightClosest)
+
+    labels = labelTemp[1:-1, 1:-1] #去掉padding
+
+    #對補完洞的結果做weighted median filter
+    labels = xip.weightedMedianFilter(Il.astype(np.uint8), labels.astype(np.uint8), 20)
+
     return labels.astype(np.uint8)
-
-
 
