@@ -17,8 +17,12 @@ def computeDisp(Il, Ir, max_disp):
 
     #先在image的周圍加上一圈padding (預設是0)
     #這樣在計算邊緣的cost時，就不會超出image的範圍
+
     leftImagePadded = np.pad(Il, ((1, 1), (1, 1), (0, 0)), 'constant')  #對於長寬都加上一圈padding
     rightImagePadded = np.pad(Ir, ((1, 1), (1, 1), (0, 0)), 'constant')
+
+    # leftImagePadded = np.pad(Il, ((1, 1), (1, 1), (0, 0)), 'reflect')  # 對於長寬都加上一圈padding
+    # rightImagePadded = np.pad(Ir, ((1, 1), (1, 1), (0, 0)), 'reflect')
 
     #計算census cost
     #對於每一個pixel，都會計算他的binary pattern(也就是中間和周圍的pixel比較，如果比中間大就是0，比中間小就是1)
@@ -65,6 +69,7 @@ def computeDisp(Il, Ir, max_disp):
     # 左下的3比中間的4小，所以是1，中下的7比中間的4大，所以是0，右下的2比中間的4小，所以是1
     # 要達成這樣的結果，我們需要將鄰居依照以下個順序來shift，並和自己比較:
     # 右下 -> 下 -> 左下 -> 右 -> 中 -> 左 -> 右上 -> 上 -> 左上
+    # TODO: 繞兩圈
     shiftAmount = [(1, 1), (1, 0), (1, -1), (0, 1), (0, 0), (0, -1), (-1, 1), (-1, 0), (-1, -1)]
     leftImageBinaryPattern = np.zeros((h, w, ch, 9))
     rightImageBinaryPattern = np.zeros((h, w, ch, 9))
@@ -127,8 +132,7 @@ def computeDisp(Il, Ir, max_disp):
 
     leftCostVolume = np.zeros((h, w, max_disp + 1), dtype=np.float32)  #從左圖轉到右圖的disparity cost
     rightCostVolume = np.zeros((h, w, max_disp + 1), dtype=np.float32)  #從左圖轉到右圖的disparity cost
-    sigma_r, sigma_s, WMF_r = 4, 11, 11
-    wndw_size = -1  # calculate window size from spatial kernel
+
     for d in range(max_disp + 1):  #嘗試每一種disparity
 
         # 計算從左圖轉到右圖的disparity cost
@@ -142,7 +146,7 @@ def computeDisp(Il, Ir, max_disp):
         # 切掉的原因是因為左圖已經向左移動d，所以左圖的右邊會有d個pixel的cost是沒意義的 (因此會在右邊切掉d個pixel)
         # 補0的原因是剛剛把左圖向左移動d，所以要將左圖移回來，這樣座標才會是對的 (因此會在左邊補d個pixel)
         leftCost = leftCost[:, :w - d]
-        leftCost = np.pad(leftCost, ((0, 0), (d, 0)), 'constant')  #因為在右圖中，我們需要向左邊移動d，所以要在左邊加上d個pixel
+        leftCost = np.pad(leftCost, ((0, 0), (d, 0)), 'edge')  #因為在右圖中，我們需要向左邊移動d，所以要在左邊加上d個pixel
         #右圖同理，我們先將右圖整個向右移動d，這樣移動完的右圖和左圖對應在一起時，右圖的(i, j)和左圖的(i, j+d)是對應的
         rightImageBinaryPatternShiftD = np.roll(rightImageBinaryPattern, d, axis=1)
         rightCost = np.sum(
@@ -150,14 +154,14 @@ def computeDisp(Il, Ir, max_disp):
         rightCost = np.sum(rightCost, axis=2).astype(np.float32)  # 把所有channel的cost加起來
         rightCost = rightCost[:, d:]  #因為將右圖整個向右移動d，所以右圖的左邊會有d個pixel的cost是沒意義的 (因此會在左邊切掉d個pixel)
         rightCost = np.pad(rightCost, ((0, 0), (0, d)),
-                                 'constant')  #因為將右圖整個向右移動d，又把左邊切掉d個pixel，所以要在右邊加上d個pixel，讓大小和原圖一樣
+                                 'edge')  #因為將右圖整個向右移動d，又把左邊切掉d個pixel，所以要在右邊加上d個pixel，讓大小和原圖一樣
 
-        # rightCostVolume[i,j,d]代表的是右圖中(i, j)的pixel相對於左圖中(i, j+d)的pixel的disparity cost
-        # 利用joint bilateral filter讓cost volume變得更smooth
-        # 這邊的joint image是左圖，因為我們要讓右圖的cost volume變得更smooth，
-        leftCostVolume[:, :, d] = xip.jointBilateralFilter(Il, leftCost, -1, sigma_r, sigma_s)
         # leftCostVolume[i,j,d]代表的是左圖中(i, j)的pixel相對於右圖中(i, j-d)的pixel的disparity cost
-        rightCostVolume[:, :, d] = xip.jointBilateralFilter(Ir, rightCost, -1, sigma_r, sigma_s)
+        # 利用joint bilateral filter讓cost volume變得更smooth
+        # 這邊的joint image是左圖，因為要讓結果更smooth，也要考慮左圖的資訊
+        leftCostVolume[:, :, d] = xip.jointBilateralFilter(Il, leftCost, -1, 4, 11)
+        # rightCostVolume[i,j,d]代表的是右圖中(i, j)的pixel相對於左圖中(i, j+d)的pixel的disparity cost
+        rightCostVolume[:, :, d] = xip.jointBilateralFilter(Ir, rightCost, -1, 4, 11)
 
     # >>> Disparity Optimization
     # TODO: Determine disparity based on estimated cost.
@@ -219,6 +223,7 @@ def computeDisp(Il, Ir, max_disp):
                     rightFinder += 1
                 rightClosest = labelTemp[i, rightFinder]
                 labelTemp[i, j] = min(leftClosest, rightClosest)
+                # holeMap[i, j] = 0 #補完洞就設為0
 
     labels = labelTemp[1:-1, 1:-1] #去掉padding
 
