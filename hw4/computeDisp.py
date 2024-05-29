@@ -69,7 +69,7 @@ def computeDisp(Il, Ir, max_disp):
     # 左下的3比中間的4小，所以是1，中下的7比中間的4大，所以是0，右下的2比中間的4小，所以是1
     # 要達成這樣的結果，我們需要將鄰居依照以下個順序來shift，並和自己比較:
     # 右下 -> 下 -> 左下 -> 右 -> 中 -> 左 -> 右上 -> 上 -> 左上
-    # TODO: 繞兩圈
+
     shiftAmount = [(1, 1), (1, 0), (1, -1), (0, 1), (0, 0), (0, -1), (-1, 1), (-1, 0), (-1, -1)]
     leftImageBinaryPattern = np.zeros((h, w, ch, 9))
     rightImageBinaryPattern = np.zeros((h, w, ch, 9))

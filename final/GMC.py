@@ -2,6 +2,8 @@ import cv2
 import numpy as np
 from util import *
 from tqdm import tqdm
+#pictures_dict紀錄的是每一個frame要參考的前後frame
+#題目要求要用hierarchical B
 pictures_dict = {
     16: [0, 32],
     8: [0, 16],
@@ -129,18 +131,20 @@ pictures_dict = {
     127: [126, 128]
 }
 def main():
-    for target, ref in tqdm(pictures_dict.items()):
+    for target, ref in tqdm(pictures_dict.items()):  #對於每一個 target frame及對應的參考frame
         img_name = '%03d'%target 
         ref1_name = '%03d'%ref[0] 
-        ref2_name = '%03d'%ref[1] 
+        ref2_name = '%03d'%ref[1]
+        #從yuv_imgs資料夾中讀取圖片
+        # (yuv_imgs資料夾中的圖片是用yuv2png.py轉換而來，裡面的圖片是影片裡的frame轉出來的RGB圖片)
         img = cv2.imread(f'./yuv_imgs/{img_name}.png', cv2.IMREAD_COLOR)
         img_ref1 = cv2.imread(f'./yuv_imgs/{ref1_name}.png', cv2.IMREAD_COLOR)
         img_ref2 = cv2.imread(f'./yuv_imgs/{ref2_name}.png', cv2.IMREAD_COLOR)
         transformed_imgs = []
         
 
-        kp, kp1, kp2, matches, matches2 = feature_match(img,img_ref1,img_ref2, method='orb',feature_num=300)
-        matrix_perspective, matrix_affine = get_matrix(kp1, kp, matches)
+        kp, kp1, kp2, matches, matches2 = feature_match(img,img_ref1,img_ref2, method='orb',feature_num=300) #使用orb特徵，提取出300個特徵點
+        matrix_perspective, matrix_affine = get_matrix(kp1, kp, matches)  #利用matches,得到perspective matrix和affine matrix
         matrix_perspective2, matrix_affine2 = get_matrix(kp2, kp, matches2)
         t1, t2, t3 = get_transform_img(img_ref1, matrix_perspective, matrix_affine)
         transformed_imgs.append(t1)
